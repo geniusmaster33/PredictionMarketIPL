@@ -4,38 +4,33 @@ import './SafeMath.sol';
 import './Interfaces.sol';
 import './Ownable.sol';
 import './Haltable.sol';
+import './EIP20Interface.sol';
 
 
 contract Match is Haltable, Ownable
 {
     using SafeMath for uint;
 
-    enum Vote { None, Yes, No }
+     EIP20Interface token =  EIP20Interface (0x35ef07393b57464e93deb59175ff72e6499450cf);
+     uint[5] public multiplier;
 
     struct Bet {
-        address bettor;
-        Vote vote;
-        uint amount;
-        bool withdrawn;
+       uint[5] weight;
+       uint[5] option;
+       uint totalBet;
     }
 
-    uint public voteDeadlineBlock;
-    uint public betDeadlineBlock;
-    uint public yesVotes;
-    uint public noVotes;
-    uint public yesFunds;
-    uint public noFunds;
-
+    uint public totalPot;
+    uint[5] public qPot;
     mapping(address => Bet) public bets;
-    mapping(address => Vote) public votes;
-
+    address[] playerList;
+   
+    
     event LogBet(address bettor, Vote vote, uint betAmount);
     event LogVote(address trustedSource, Vote vote);
     event LogWithdraw(address who, uint amount);
 
-    function BinaryQuestion(uint _betDeadlineBlock, uint _voteDeadlineBlock) {
-        betDeadlineBlock = _betDeadlineBlock;
-        voteDeadlineBlock = _voteDeadlineBlock;
+    function Match() {
     }
 
     function haltSwitch(address _who, bool _isHalted)
@@ -56,25 +51,15 @@ contract Match is Haltable, Ownable
         return true;
     }
 
-    function bet(bool yesOrNo)
+    function bet(uint[5] weight, uint[5] option)
         payable
+        onlyNotHalted
+        canBet
         returns (bool ok)
     {
-        require(msg.value > 0);
-        require(block.number <= betDeadlineBlock);
+        
 
-        Vote betVote;
-        if (yesOrNo == true) {
-            yesFunds = yesFunds.safeAdd(msg.value);
-            betVote = Vote.Yes;
-        } else {
-            noFunds = noFunds.safeAdd(msg.value);
-            betVote = Vote.No;
-        }
-
-        bets[msg.sender].bettor = msg.sender;
-        bets[msg.sender].vote = betVote;
-        bets[msg.sender].amount = bets[msg.sender].amount.safeAdd(msg.value);
+       
 
         LogBet(msg.sender, betVote, msg.value);
 
@@ -151,6 +136,11 @@ contract Match is Haltable, Ownable
     modifier onlyAdmin {
         IPredictionMarket mkt = IPredictionMarket(owner);
         require(mkt.isAdmin(msg.sender));
+        _;
+    }
+    
+    modifier canBet {
+        require(bets[msg.sender].totalBet == 0);
         _;
     }
 
