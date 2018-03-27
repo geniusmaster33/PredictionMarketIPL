@@ -11,148 +11,69 @@ contract Match is Haltable, Ownable
 {
     using SafeMath for uint;
 
-     EIP20Interface token =  EIP20Interface (0x35ef07393b57464e93deb59175ff72e6499450cf);
-     uint[5] public multiplier;
+    EIP20Interface token =  EIP20Interface (0x35ef07393b57464e93deb59175ff72e6499450cf);
+    
+    uint public matchId;
+    uint256[6] public multiplier;
 
     struct Bet {
-       uint[5] weight;
-       uint[5] option;
+       uint256[5] weight;
+       uint256[5] option;
        uint totalBet;
     }
+    
+    struct Result {
+        uint256 win;
+        uint256 loose;
+        
+    }
 
-    uint public totalPot;
-    uint[5] public qPot;
+    uint256[5] public qPot;
+    uint256 public totalPot;
+    mapping(adress => bool) public isBet;
     mapping(address => Bet) public bets;
     address[] playerList;
    
+    bool public matchAbandon;
+    bool public matchEnd;
     
-    event LogBet(address bettor, Vote vote, uint betAmount);
-    event LogVote(address trustedSource, Vote vote);
-    event LogWithdraw(address who, uint amount);
-
-    function Match() {
+    event LogBet(uint matchId,address bettor, uint256 betAmount);
+    event LogBetReset(uint matchId, address bettor, address adminAddress);
+    event LogBetSwitch(uint matchId, address adminAddress, bool isHalted);
+    function Match(uint _id){
+        matchId = _id;
     }
 
-    function haltSwitch(address _who, bool _isHalted)
-        onlyAdmin
-        returns (bool ok)
-    {
-        return _haltSwitch(_who, _isHalted);
-    }
-
-    // due to our multi-admin setup, it's probably useful to be able to specify the recipient
-    // of the destroyed contract's funds.
-    function kill(address recipient)
-        onlyAdmin
-        onlyHalted
-        returns (bool ok)
-    {
-        selfdestruct(recipient);
-        return true;
-    }
-
-    function bet(uint[5] weight, uint[5] option)
+    function bet(uint256[5] _weight, uint256[5] _option)
         payable
         onlyNotHalted
         canBet
         returns (bool ok)
     {
+        require (!matchAbandon);
         
+        if(!isBet[msg.sender]){
+            playerList.push(msg.sender);
+        }
+        
+        uint256 sum = 0;
+        uint i;
+        for(i=0;i<5;i++){
+            bets[msg.sender].weight[i] = _weight[i];
+            qPot[i] += _weight[i]
+            bets[msg.sender].option[i] = _option[i];
+            sum += _weight[i];
+        }
+        bets[msg.sender].totalBet = sum;
+        totalPot+= sum;
+        token.minusToken(msg.sender,sum);
 
-       
-
-        LogBet(msg.sender, betVote, msg.value);
+        emit LogBet(matchId,msg.sender,sum);
 
         return true;
     }
-
-    // this method is intended to be called by contracts inheriting from BinaryQuestion, hence why
-    // it's marked `internal`.  this helps us account for the different ways of "voting" on a question
-    // (human trusted sources, an oracle, etc.)
-    function vote(address voter, bool yesOrNo)
-        internal
-        returns (bool ok)
-    {
-        require(block.number > betDeadlineBlock);
-        require(block.number <= voteDeadlineBlock);
-        require(votes[voter] == Vote.None);
-
-        Vote voteValue;
-        if (yesOrNo == true) {
-            yesVotes = yesVotes.safeAdd(1);
-            voteValue = Vote.Yes;
-        } else {
-            noVotes = noVotes.safeAdd(1);
-            voteValue = Vote.No;
-        }
-
-        votes[voter] = voteValue;
-
-        LogVote(voter, voteValue);
-
-        return true;
-    }
-
-    function withdraw()
-        returns (bool ok)
-    {
-        require(block.number > voteDeadlineBlock);
-
-        Bet storage theBet = bets[msg.sender];
-        require(theBet.amount > 0);
-        require(theBet.withdrawn == false);
-
-        theBet.withdrawn = true;
-
-        // if nobody voted, or the vote was a tie, the bettors are allowed to simply withdraw their bets
-        if (yesVotes == noVotes) {
-            msg.sender.transfer(theBet.amount);
-
-            LogWithdraw(msg.sender, theBet.amount);
-            return true;
-        }
-
-        uint winningVoteFunds;
-        if (yesVotes > noVotes) {
-            require(theBet.vote == Vote.Yes);
-            winningVoteFunds = yesFunds;
-        } else if (noVotes > yesVotes) {
-            require(theBet.vote == Vote.No);
-            winningVoteFunds = noFunds;
-        }
-
-        uint totalFunds = yesFunds.safeAdd(noFunds);
-        uint withdrawAmount = totalFunds.safeMul(theBet.amount).safeDiv(winningVoteFunds);
-
-        msg.sender.transfer(withdrawAmount);
-
-        LogWithdraw(msg.sender, withdrawAmount);
-        return true;
-    }
-
-    // onlyAdmin calls back to the PredictionMarket contract that spawned this question to ensure
-    // that msg.sender is an admin.  it's much easier and cheaper to centralize storage of our
-    // list of admins.
-    modifier onlyAdmin {
-        IPredictionMarket mkt = IPredictionMarket(owner);
-        require(mkt.isAdmin(msg.sender));
-        _;
-    }
+   
     
-    modifier canBet {
-        require(bets[msg.sender].totalBet == 0);
-        _;
-    }
-
- 
-
-    function vote(bool yesOrNo)
-        onlyTrustedSource
-        returns (bool ok)
-    {
-        return BinaryQuestion.vote(msg.sender, yesOrNo);
-    }
-
     //
     // frontend convenience getters
     //
@@ -163,10 +84,79 @@ contract Match is Haltable, Ownable
     {
         return (questionStr, betDeadlineBlock, voteDeadlineBlock, yesVotes, noVotes, yesFunds, noFunds);
     }
+    
+    //
+    // Utility Functions
+    //
+    
+    function endMatch(uint[5] options) onlyOwner onlyHalted returns (bool ok){
+        
+            
+                   
+           return true;
+    }
+    
+    function abandonMatch() onlyOwner {
+        
+    }
+    
+    function resetBet(adress _who,address _bettor) onlyOwner returns (bool ok){
+        uint i;
+        uint256 sum;
+        
+        sum = bets[_better].totalBet
+        for(i=0;i<5;i++){
+            qPot[i] -= bets[_bettor].weight[i];
+        }
+        delete bets[_bettor];
+        totalPot -= sum ;
+        token.addToken(msg.sender,sum);
+        
+        emit LogBetReset (matchId, _bettor, _who);
+        return true;
+        
+        
+    }
+    function haltSwitch(address _who, bool _isHalted)
+        onlyOwner
+        returns (bool ok)
+    {
+        require(isHalted != _isHalted);
+        isHalted = _isHalted;
+        emit LogBetSwitch(matchId,_who, _isHalted);
+        return true;
+    }
 
+    // due to our multi-admin setup, it's probably useful to be able to specify the recipient
+    // of the destroyed contract's funds.
+    function kill(address recipient)
+        onlyOwner
+        onlyHalted
+        returns (bool ok)
+    {
+        selfdestruct(recipient);
+        return true;
+    }
+
+    function getMultipler() onlyOwner returns(uint[6] mulx){
+        
+    }
+    
+    function setMultiplier
     //
     // modifiers
     //
+
+    modifier onlyAdmin {
+        IPredictionMarket mkt = IPredictionMarket(owner);
+        require(mkt.isAdmin(msg.sender));
+        _;
+    }
+    
+    modifier canBet {
+        require(bets[msg.sender].totalBet == 0);
+        _;
+    }
 
    
 }
