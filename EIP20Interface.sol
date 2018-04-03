@@ -1,61 +1,102 @@
-// Abstract contract for the full ERC 20 Token standard
-// https://github.com/ethereum/EIPs/blob/master/EIPS/eip-20.md
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.15;
+
+import './IPLMatch.sol';
+import './Haltable.sol';
+import './MultiOwnable.sol';
+import './AddressSetLib.sol';
+import './EIP20Interface.sol';
 
 
-contract EIP20Interface {
-    /* This is a slight change to the ERC20 base standard.
-    function totalSupply() constant returns (uint256 supply);
-    is replaced with:
-    uint256 public totalSupply;
-    This automatically creates a getter function for the totalSupply.
-    This is moved to the base contract since public getter functions are not
-    currently recognised as an implementation of the matching abstract
-    function by the compiler.
-    */
-    /// total amount of tokens
-    uint256 public totalSupply; 
-    mapping(address => bool) public isAdmin;
+contract Ipl is MultiOwnable, Haltable
+{
+    // libs
+    using AddressSetLib for AddressSetLib.AddressSet;
+    address public tokenAddress;
+    EIP20Interface token;
+    // state
+    mapping(address => bool) public isTrustedSource;
+    mapping(address => string) public playerNames;
 
-    modifier onlyAdmin {
-        require(isAdmin[msg.sender]);
-        _;
+    mapping(bytes32 => bool) public questionHasBeenAsked;
+    AddressSetLib.AddressSet questions;
+   
+    // events
+    event LogAddQuestion(address whoAdded, address questionAddress, string questionStr, uint betDeadlineBlock, uint voteDeadlineBlock);
+    event LogAddETHFuturesQuestion(address whoAdded, address questionAddress, uint targetUSDPrice, uint betDeadlineBlock, uint voteDeadlineBlock);
+
+    function Ipl(address _token) {
+        isAdmin[msg.sender] = true;
+        token =  EIP20Interface (_token);
+        tokenAddress = _token;
     }
 
-    /// @param _owner The address from which the balance will be retrieved
-    /// @return The balance
-    function balanceOf(address _owner) public view returns (uint256 balance);
+    //
+    // administrative functions
+    //
 
-    /// @notice send `_value` token to `_to` from `msg.sender`
-    /// @param _to The address of the recipient
-    /// @param _value The amount of token to be transferred
-    /// @return Whether the transfer was successful or not
-    function transfer(address _to, uint256 _value) public returns (bool success);
+    function haltSwitch(bool _isHalted)
+        onlyAdmin
+        returns (bool ok)
+    {
+        return _haltSwitch(msg.sender, _isHalted);
+    }
 
-    /// @notice send `_value` token to `_to` from `_from` on the condition it is approved by `_from`
-    /// @param _from The address of the sender
-    /// @param _to The address of the recipient
-    /// @param _value The amount of token to be transferred
-    /// @return Whether the transfer was successful or not
-    function transferFrom(address _from, address _to, uint256 _value) public returns (bool success);
+    // due to our multi-admin setup, it's probably useful to be able to specify the recipient
+    // of the destroyed contract's funds.
+    function kill(address recipient)
+        onlyAdmin
+        onlyHalted
+        returns (bool ok)
+    {
+        selfdestruct(recipient);
+        return true;
+    }
 
-    /// @notice `msg.sender` approves `_spender` to spend `_value` tokens
-    /// @param _spender The address of the account able to transfer the tokens
-    /// @param _value The amount of tokens to be approved for transfer
-    /// @return Whether the approval was successful or not
-    function approve(address _spender, uint256 _value) public returns (bool success);
+    //
+    // business logic
+    //
 
-    /// @param _owner The address of the account owning tokens
-    /// @param _spender The address of the account able to transfer the tokens
-    /// @return Amount of remaining tokens allowed to spent
-    function allowance(address _owner, address _spender) public view returns (uint256 remaining);
+    function addMatch(uint _id)
+        onlyAdmin
+        onlyNotHalted
+        returns (bool ok, address questionAddr)
+    {
+        IPLMatch match1 = new IPLMatch(_id, tokenAddress);
+        match1.setMultiplier([uint256(2),uint256(3),uint256(4),uint256(5),uint256(6),uint256(7)]);
+        questions.add(address(match1));
+        //LogAddQuestion(msg.sender, address(question), questionStr, betDeadlineBlock, voteDeadlineBlock);
+        return (true, address(match1));
+    }
+
+    function addPlayer(address _playerAddress, string playerName) onlyAdmin {
+        isTrustedSource[_playerAddress] = true;
+        token.addTokens(_playerAddress,500);
+        playerNames[_playerAddress] = playerName;
+    }
     
-    function addTokens(address _to, uint256 _value) public onlyAdmin returns (uint256 balance);
+    //
+    // getters for the frontend
+    //
     
-    function minusTokens(address _to, uint256 _value) public onlyAdmin returns (uint256 balance);
 
-    // solhint-disable-next-line no-simple-event-func-name  
-    event Transfer(address indexed _from, address indexed _to, uint256 _value); 
-    event Approval(address indexed _owner, address indexed _spender, uint256 _value);
-    event LogAddAdmin(address whoAdded, address newAdmin);
+    function numQuestions()
+        constant
+        returns (uint)
+    {
+        return questions.size();
+    }
+
+    function getQuestionIndex(uint i)
+        constant
+        returns (address)
+    {
+        return questions.get(i);
+    }
+
+    function getAllQuestionAddresses()
+        constant
+        returns (address[])
+    {
+        return questions.values;
+    }
 }

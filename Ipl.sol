@@ -1,29 +1,33 @@
 pragma solidity ^0.4.15;
 
-import './Match.sol';
+import './IPLMatch.sol';
 import './Haltable.sol';
 import './MultiOwnable.sol';
 import './AddressSetLib.sol';
+import './EIP20Interface.sol';
 
 
-contract PredictionMarket is MultiOwnable, Haltable
+contract Ipl is MultiOwnable, Haltable
 {
     // libs
     using AddressSetLib for AddressSetLib.AddressSet;
-
+    address public tokenAddress;
+    EIP20Interface token;
     // state
     mapping(address => bool) public isTrustedSource;
+    mapping(address => string) public playerNames;
 
     mapping(bytes32 => bool) public questionHasBeenAsked;
     AddressSetLib.AddressSet questions;
-    AddressSetLib.AddressSet ethFuturesQuestions;
-
+   
     // events
     event LogAddQuestion(address whoAdded, address questionAddress, string questionStr, uint betDeadlineBlock, uint voteDeadlineBlock);
     event LogAddETHFuturesQuestion(address whoAdded, address questionAddress, uint targetUSDPrice, uint betDeadlineBlock, uint voteDeadlineBlock);
 
-    function PredictionMarket() {
+    function Ipl(address _token) {
         isAdmin[msg.sender] = true;
+        token =  EIP20Interface (_token);
+        tokenAddress = _token;
     }
 
     //
@@ -52,48 +56,28 @@ contract PredictionMarket is MultiOwnable, Haltable
     // business logic
     //
 
-    function addQuestion(string questionStr, uint betDeadlineBlock, uint voteDeadlineBlock)
+    function addMatch(uint _id)
         onlyAdmin
         onlyNotHalted
         returns (bool ok, address questionAddr)
     {
-        require(betDeadlineBlock > block.number);
-        require(voteDeadlineBlock > betDeadlineBlock);
-
-        // ensure no repeated questions
-        bytes32 questionID = keccak256(questionStr);
-        require(questionHasBeenAsked[questionID] == false);
-        questionHasBeenAsked[questionID] = true;
-
-        // deploy the new question
-        Question question = new Question(questionStr, betDeadlineBlock, voteDeadlineBlock);
-        questions.add(address(question));
-
-        LogAddQuestion(msg.sender, address(question), questionStr, betDeadlineBlock, voteDeadlineBlock);
-
-        return (true, address(question));
+        IPLMatch match1 = new IPLMatch(_id, tokenAddress);
+        match1.setMultiplier([uint256(2),uint256(3),uint256(4),uint256(5),uint256(6),uint256(7)]);
+        questions.add(address(match1));
+        //LogAddQuestion(msg.sender, address(question), questionStr, betDeadlineBlock, voteDeadlineBlock);
+        return (true, address(match1));
     }
 
-    function addETHFuturesQuestion(uint targetUSDPrice, uint betDeadlineBlock, uint voteDeadlineBlock)
-        onlyAdmin
-        onlyNotHalted
-        returns (bool ok, address questionAddr)
-    {
-        require(betDeadlineBlock > block.number);
-        require(voteDeadlineBlock > betDeadlineBlock);
-
-        // deploy the new question
-        ETHFuturesQuestion question = new ETHFuturesQuestion(targetUSDPrice, betDeadlineBlock, voteDeadlineBlock);
-        ethFuturesQuestions.add(address(question));
-
-        LogAddETHFuturesQuestion(msg.sender, address(question), targetUSDPrice, betDeadlineBlock, voteDeadlineBlock);
-
-        return (true, address(question));
+    function addPlayer(address _playerAddress, string playerName) onlyAdmin {
+        isTrustedSource[_playerAddress] = true;
+        token.addTokens(_playerAddress,500);
+        playerNames[_playerAddress] = playerName;
     }
-
+    
     //
     // getters for the frontend
     //
+    
 
     function numQuestions()
         constant

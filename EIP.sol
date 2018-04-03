@@ -35,6 +35,7 @@ contract EIP20 is MultiOwnable,EIP20Interface {
         name = _tokenName;                                   // Set the name for display purposes
         decimals = _decimalUnits;                            // Amount of decimals for display purposes
         symbol = _tokenSymbol;                               // Set the symbol for display purposes
+        isAdmin[msg.sender]=true;
     }
 
     function transfer(address _to, uint256 _value) public returns (bool success) {
