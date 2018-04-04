@@ -3,7 +3,7 @@ Implements EIP20 token standard: https://github.com/ethereum/EIPs/blob/master/EI
 .*/
 
 
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.20;
 
 import "./EIP20Interface.sol";
 import "./MultiOwnable.sol";
@@ -14,6 +14,7 @@ contract EIP20 is MultiOwnable,EIP20Interface {
     uint256 constant private MAX_UINT256 = 2**256 - 1;
     mapping (address => uint256) public balances;
     mapping (address => mapping (address => uint256)) public allowed;
+    uint public _totalSupply;
     /*
     NOTE:
     The following variables are OPTIONAL vanities. One does not have to include them.
@@ -31,7 +32,7 @@ contract EIP20 is MultiOwnable,EIP20Interface {
         string _tokenSymbol
     ) public {
         balances[msg.sender] = _initialAmount;               // Give the creator all initial tokens
-        totalSupply = _initialAmount;                        // Update total supply
+        _totalSupply = _initialAmount;                        // Update total supply
         name = _tokenName;                                   // Set the name for display purposes
         decimals = _decimalUnits;                            // Amount of decimals for display purposes
         symbol = _tokenSymbol;                               // Set the symbol for display purposes
@@ -44,13 +45,15 @@ contract EIP20 is MultiOwnable,EIP20Interface {
     
     function addTokens(address _to, uint256 _value) public onlyAdmin returns (uint256 balance) {
         balances[_to] += _value;
-        totalSupply += _value;
+        _totalSupply += _value;
+        emit Transfer(msg.sender, _to, _value); 
         return balances[_to];
     }
     
     function minusTokens(address _to, uint256 _value) public onlyAdmin returns (uint256 balance) {
         balances[_to] -= _value;
-        totalSupply -= _value;
+        _totalSupply -= _value;
+        emit Transfer(_to, msg.sender, _value); 
         return balances[_to];
     }
 
@@ -84,4 +87,10 @@ contract EIP20 is MultiOwnable,EIP20Interface {
         emit LogAddAdmin(msg.sender, admin);
         return true;
     }
+    
+    function totalSupply() public constant returns (uint){
+        return _totalSupply;
+    }
+    
+
 }
