@@ -16,13 +16,42 @@ contract Ipl is MultiOwnable, Haltable
     // state
     mapping(address => bool) public isTrustedSource;
     mapping(address => string) public playerNames;
+    address[] public playerList;
+    
+    struct PlayerStat {
+        uint256 toalWinAmount;
+        uint256 totalLooseAmount;
+        uint256 totalWins;
+        uint256 totalLoose;
+        uint256 totalBets;
+    }
+    
+    struct MatchStat {
+        uint256 toalWinAmount;
+        uint256 totalLooseAmount;
+        uint256 totalWins;
+        uint256 totalLoose;
+        uint256 totalBets;
+    }
+    
+    struct QuestionStat {
+        uint256 toalWinAmount;
+        uint256 totalLooseAmount;
+        uint256 totalWins;
+        uint256 totalLoose;
+        uint256 totalBets;
+    }
+    
+    mapping (address => uint) public playerRank;
+    mapping (address => PlayerStat) public playerStats;
+    mapping (address => MatchStat) public matchStats;
+    mapping (address => QuestionStat) public questionStats;
 
-    mapping(bytes32 => bool) public questionHasBeenAsked;
-    AddressSetLib.AddressSet questions;
+    AddressSetLib.AddressSet matches;
    
     // events
-    event LogAddQuestion(address whoAdded, address questionAddress, string questionStr, uint betDeadlineBlock, uint voteDeadlineBlock);
-    event LogAddETHFuturesQuestion(address whoAdded, address questionAddress, uint targetUSDPrice, uint betDeadlineBlock, uint voteDeadlineBlock);
+    
+    event LogMatchAdded(uint indexed matchId);
 
     function Ipl(address _token) {
         isAdmin[msg.sender] = true;
@@ -61,42 +90,108 @@ contract Ipl is MultiOwnable, Haltable
         onlyNotHalted
         returns (bool ok, address questionAddr)
     {
+        require(matches.size()+1 == _id);
+        
         IPLMatch match1 = new IPLMatch(_id, tokenAddress);
         match1.setMultiplier([uint256(2),uint256(3),uint256(4),uint256(5),uint256(6),uint256(7)]);
-        questions.add(address(match1));
-        //LogAddQuestion(msg.sender, address(question), questionStr, betDeadlineBlock, voteDeadlineBlock);
+        matches.add(address(match1));
+        
+        emit LogMatchAdded(_id);
+        
         return (true, address(match1));
     }
 
-    function addPlayer(address _playerAddress, string playerName) onlyAdmin {
+    function addPlayer(address _playerAddress, string playerName) 
+        onlyAdmin 
+        onlyNotHalted
+        returns (bool ok)
+    {
+        
+        require(!isTrustedSource[_playerAddress]);
+        
         isTrustedSource[_playerAddress] = true;
         token.addTokens(_playerAddress,500);
         playerNames[_playerAddress] = playerName;
+        playerList.push(_playerAddress);
+        
+        return true;
     }
+    
+    function setPlayerRank(uint[] rankArray, address[] addressArray)
+        onlyAdmin
+        onlyNotHalted
+        returns (bool ok)
+    {
+        uint i;
+        for(i=0;i<addressArray.length;i++){
+            playerRank[addressArray[i]] = rankArray[i];
+        }
+        
+        return true;
+        
+    }
+    
+    
     
     //
     // getters for the frontend
     //
     
 
-    function numQuestions()
+    function numMatches()
         constant
         returns (uint)
     {
-        return questions.size();
+        return matches.size();
     }
 
-    function getQuestionIndex(uint i)
+    function getMatchByIndex(uint i)
         constant
         returns (address)
     {
-        return questions.get(i);
+        return matches.get(i);
     }
 
-    function getAllQuestionAddresses()
+    function getAllMatchAddresses()
         constant
         returns (address[])
     {
-        return questions.values;
+        return matches.values;
     }
+    
+    function getPlayerList()
+        constant
+        returns (address[])
+    {
+        return playerList;
+    }
+   /* function getAllPlayerStats()
+        constant
+        returns(PlayerStat[])
+    {
+        uint i;
+        PlayerStat[] memory allPlayerStats;
+        for (i=0;i<playerList.length;i++)
+        {
+            allPlayerStats.push(playerStats[playerList[i]]);
+        }
+        
+        return allPlayerStats;
+    }*/
+    
+    /*function getAllMatchStats
+        constant
+    {
+        
+    }
+    function getAllQuestionStats
+        constant
+    {
+        
+    }
+    function getAllPlayerRanks
+        constant
+    {
+        
+    }*/
 }

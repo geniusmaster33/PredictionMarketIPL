@@ -1,102 +1,46 @@
-pragma solidity ^0.4.15;
-
-import './IPLMatch.sol';
-import './Haltable.sol';
-import './MultiOwnable.sol';
-import './AddressSetLib.sol';
-import './EIP20Interface.sol';
+// Abstract contract for the full ERC 20 Token standard
+// https://github.com/ethereum/EIPs/blob/master/EIPS/eip-20.md
+pragma solidity ^0.4.18;
 
 
-contract Ipl is MultiOwnable, Haltable
-{
-    // libs
-    using AddressSetLib for AddressSetLib.AddressSet;
-    address public tokenAddress;
-    EIP20Interface token;
-    // state
-    mapping(address => bool) public isTrustedSource;
-    mapping(address => string) public playerNames;
+contract EIP20Interface {
+    /* This is a slight change to the ERC20 base standard.
+    function totalSupply() constant returns (uint256 supply);
+    is replaced with:
+    uint256 public totalSupply;
+    This automatically creates a getter function for the totalSupply.
+    This is moved to the base contract since public getter functions are not
+    currently recognised as an implementation of the matching abstract
+    function by the compiler.
+    */
+    /// total amount of tokens
 
-    mapping(bytes32 => bool) public questionHasBeenAsked;
-    AddressSetLib.AddressSet questions;
-   
-    // events
-    event LogAddQuestion(address whoAdded, address questionAddress, string questionStr, uint betDeadlineBlock, uint voteDeadlineBlock);
-    event LogAddETHFuturesQuestion(address whoAdded, address questionAddress, uint targetUSDPrice, uint betDeadlineBlock, uint voteDeadlineBlock);
+    mapping(address => bool) public isAdmin;
 
-    function Ipl(address _token) {
-        isAdmin[msg.sender] = true;
-        token =  EIP20Interface (_token);
-        tokenAddress = _token;
+    modifier onlyAdmin {
+        require(isAdmin[msg.sender]);
+        _;
     }
 
-    //
-    // administrative functions
-    //
+    function totalSupply() public constant returns (uint);
+    function balanceOf(address tokenOwner) public constant returns (uint balance);
+    function allowance(address tokenOwner, address spender) public constant returns (uint remaining);
+    function transfer(address to, uint tokens) public returns (bool success);
+    function approve(address spender, uint tokens) public returns (bool success);
+    function transferFrom(address from, address to, uint tokens) public returns (bool success);
 
-    function haltSwitch(bool _isHalted)
-        onlyAdmin
-        returns (bool ok)
-    {
-        return _haltSwitch(msg.sender, _isHalted);
-    }
-
-    // due to our multi-admin setup, it's probably useful to be able to specify the recipient
-    // of the destroyed contract's funds.
-    function kill(address recipient)
-        onlyAdmin
-        onlyHalted
-        returns (bool ok)
-    {
-        selfdestruct(recipient);
-        return true;
-    }
-
-    //
-    // business logic
-    //
-
-    function addMatch(uint _id)
-        onlyAdmin
-        onlyNotHalted
-        returns (bool ok, address questionAddr)
-    {
-        IPLMatch match1 = new IPLMatch(_id, tokenAddress);
-        match1.setMultiplier([uint256(2),uint256(3),uint256(4),uint256(5),uint256(6),uint256(7)]);
-        questions.add(address(match1));
-        //LogAddQuestion(msg.sender, address(question), questionStr, betDeadlineBlock, voteDeadlineBlock);
-        return (true, address(match1));
-    }
-
-    function addPlayer(address _playerAddress, string playerName) onlyAdmin {
-        isTrustedSource[_playerAddress] = true;
-        token.addTokens(_playerAddress,500);
-        playerNames[_playerAddress] = playerName;
-    }
+    event Transfer(address indexed from, address indexed to, uint tokens);
+    event Approval(address indexed tokenOwner, address indexed spender, uint tokens);
     
-    //
-    // getters for the frontend
-    //
     
+    
+ 
+    
+    function addTokens(address _to, uint256 _value) public onlyAdmin returns (uint256 balance);
+    
+    function minusTokens(address _to, uint256 _value) public onlyAdmin returns (uint256 balance);
 
-    function numQuestions()
-        constant
-        returns (uint)
-    {
-        return questions.size();
-    }
+    // solhint-disable-next-line no-simple-event-func-name  
 
-    function getQuestionIndex(uint i)
-        constant
-        returns (address)
-    {
-        return questions.get(i);
-    }
-
-    function getAllQuestionAddresses()
-        constant
-        returns (address[])
-    {
-        return questions.values;
-    }
+    event LogAddAdmin(address whoAdded, address newAdmin);
 }
