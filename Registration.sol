@@ -26,9 +26,10 @@ contract Registration is MultiOwnable, RegistrationInterface {
         isTrustedPlayer[_playerAddress] = true;
         token.addTokens(_playerAddress,startingPoints);
         playerNames[_playerAddress] = playerName;
+        playerType[_playerAddress]=_playerType;
         playerList.push(_playerAddress);
         playerBalances.push(token.balanceOf(_playerAddress));
-        playerType[_playerAddress]=_playerType;
+        playerTypes.push(_playerType);
         
         emit LogAddPlayer(_playerAddress, playerName, _playerType);
         
@@ -70,6 +71,9 @@ contract Registration is MultiOwnable, RegistrationInterface {
         
         return (playerList,playerBalances,playerTypes);
         
+    }
+    function getLeaderBoard() constant returns(address[] _playerList, uint256[] balance, uint[] _playerType){
+        return (playerList,playerBalances,playerTypes);
     }
    
     function changeTokenAddress(address _newTokenAddress) public onlyAdmin returns(bool ok){

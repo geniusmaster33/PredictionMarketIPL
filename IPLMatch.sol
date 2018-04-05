@@ -290,7 +290,7 @@ contract IPLMatch is Haltable, Ownable
     }
     
 
-    function setMultiplier(uint256[6] mul) onlyAdmin returns(bool ok){
+    function setMultiplier(uint256[6] mul) returns(bool ok){
         uint i;
         for(i=0;i<6;i++){
             multiplier[i] = mul[i];
