@@ -5,58 +5,31 @@ import './Haltable.sol';
 import './MultiOwnable.sol';
 import './AddressSetLib.sol';
 import './EIP20Interface.sol';
-
+import './RegistrationInterface.sol';
 
 contract Ipl is MultiOwnable, Haltable
 {
     // libs
     using AddressSetLib for AddressSetLib.AddressSet;
-    address public tokenAddress;
-    EIP20Interface token;
-    // state
-    mapping(address => bool) public isTrustedSource;
-    mapping(address => string) public playerNames;
-    address[] public playerList;
+    EIP20Interface public token;
+    RegistrationInterface public register;
     
-    struct PlayerStat {
-        uint256 toalWinAmount;
-        uint256 totalLooseAmount;
-        uint256 totalWins;
-        uint256 totalLoose;
-        uint256 totalBets;
-    }
-    
-    struct MatchStat {
-        uint256 toalWinAmount;
-        uint256 totalLooseAmount;
-        uint256 totalWins;
-        uint256 totalLoose;
-        uint256 totalBets;
-    }
-    
-    struct QuestionStat {
-        uint256 toalWinAmount;
-        uint256 totalLooseAmount;
-        uint256 totalWins;
-        uint256 totalLoose;
-        uint256 totalBets;
-    }
-    
-    mapping (address => uint) public playerRank;
-    mapping (address => PlayerStat) public playerStats;
-    mapping (address => MatchStat) public matchStats;
-    mapping (address => QuestionStat) public questionStats;
+    uint256 public dailyBonus;
+    uint256 public threshold;
 
+    // state
     AddressSetLib.AddressSet matches;
    
     // events
     
     event LogMatchAdded(uint indexed matchId);
+    event LogDailyBonusChange(uint256 oldBonus, uint256 newBonus);
+    event LogThresholdChange(uint256 oldThreshold,uint256 newThreshold);
 
-    function Ipl(address _token) {
+    function Ipl(address _register) {
         isAdmin[msg.sender] = true;
-        token =  EIP20Interface (_token);
-        tokenAddress = _token;
+        register = RegistrationInterface(_register);
+        token =  EIP20Interface (address(register.tokenAddress));
     }
 
     //
@@ -92,46 +65,56 @@ contract Ipl is MultiOwnable, Haltable
     {
         require(matches.size()+1 == _id);
         
-        IPLMatch match1 = new IPLMatch(_id, tokenAddress);
+        IPLMatch match1 = new IPLMatch(_id, address(register), dailyBonus, threshold);
         match1.setMultiplier([uint256(2),uint256(3),uint256(4),uint256(5),uint256(6),uint256(7)]);
+        token.addAdminX(address(match1));
         matches.add(address(match1));
         
         emit LogMatchAdded(_id);
         
         return (true, address(match1));
     }
-
-    function addPlayer(address _playerAddress, string playerName) 
-        onlyAdmin 
-        onlyNotHalted
-        returns (bool ok)
-    {
-        
-        require(!isTrustedSource[_playerAddress]);
-        
-        isTrustedSource[_playerAddress] = true;
-        token.addTokens(_playerAddress,500);
-        playerNames[_playerAddress] = playerName;
-        playerList.push(_playerAddress);
-        
-        return true;
-    }
     
-    function setPlayerRank(uint[] rankArray, address[] addressArray)
+    function addMatchManually(uint _id, address matchAddress)
         onlyAdmin
         onlyNotHalted
-        returns (bool ok)
+        returns(bool ok)
     {
-        uint i;
-        for(i=0;i<addressArray.length;i++){
-            playerRank[addressArray[i]] = rankArray[i];
-        }
+        require(matches.size()+1 == _id);
+        matches.add(matchAddress);
+        token.addAdminX(matchAddress);
+        
+        emit LogMatchAdded(_id);
         
         return true;
-        
+    
+    }
+
+    
+    
+   function setTregisterAddress(address _registerAddress) onlyAdmin returns(bool ok){
+        register = RegistrationInterface(_registerAddress);
+        return true;
     }
     
+    function setTokenAddress(address _tokenAddress) onlyAdmin returns(bool ok){
+        token = EIP20Interface(_tokenAddress);
+        return true;
+    }
     
+     function changeDailyBonus(uint256 newBonus) public onlyAdmin returns(bool ok){
+        
+        emit LogDailyBonusChange(dailyBonus,newBonus);
+        dailyBonus = newBonus;
+        return true;
+    }
+    
+      function changeThreshold(uint256 newThreshold) public onlyAdmin returns(bool ok){
+        
+        emit LogThresholdChange(threshold,newThreshold);
+        threshold = newThreshold;
+        return true;
+    }
     
     //
     // getters for the frontend
@@ -139,6 +122,7 @@ contract Ipl is MultiOwnable, Haltable
     
 
     function numMatches()
+        public
         constant
         returns (uint)
     {
@@ -146,6 +130,7 @@ contract Ipl is MultiOwnable, Haltable
     }
 
     function getMatchByIndex(uint i)
+        public
         constant
         returns (address)
     {
@@ -153,45 +138,12 @@ contract Ipl is MultiOwnable, Haltable
     }
 
     function getAllMatchAddresses()
+        public
         constant
         returns (address[])
     {
         return matches.values;
     }
     
-    function getPlayerList()
-        constant
-        returns (address[])
-    {
-        return playerList;
-    }
-   /* function getAllPlayerStats()
-        constant
-        returns(PlayerStat[])
-    {
-        uint i;
-        PlayerStat[] memory allPlayerStats;
-        for (i=0;i<playerList.length;i++)
-        {
-            allPlayerStats.push(playerStats[playerList[i]]);
-        }
-        
-        return allPlayerStats;
-    }*/
-    
-    /*function getAllMatchStats
-        constant
-    {
-        
-    }
-    function getAllQuestionStats
-        constant
-    {
-        
-    }
-    function getAllPlayerRanks
-        constant
-    {
-        
-    }*/
+  
 }

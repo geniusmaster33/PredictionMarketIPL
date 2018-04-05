@@ -1,4 +1,4 @@
-/*
+\/*
 Implements EIP20 token standard: https://github.com/ethereum/EIPs/blob/master/EIPS/eip-20.md
 .*/
 
@@ -77,6 +77,18 @@ contract EIP20 is MultiOwnable,EIP20Interface {
     }   
     
     function addAdmin(address admin)
+        public
+        onlyAdmin
+        returns (bool ok)
+    {
+        require(isAdmin[admin] == false);
+        isAdmin[admin] = true;
+
+        emit LogAddAdmin(msg.sender, admin);
+        return true;
+    }
+    
+     function addAdminX(address admin)
         public
         onlyAdmin
         returns (bool ok)
