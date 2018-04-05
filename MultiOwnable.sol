@@ -1,14 +1,25 @@
 pragma solidity ^0.4.15;
 
-contract Ownable {
-    address public owner;
+contract MultiOwnable
+{
+    mapping(address => bool) public isAdmin;
 
-    function Ownable() {
-        owner = msg.sender;
+    event LogAddAdmin(address whoAdded, address newAdmin);
+
+    function addAdmin(address admin)
+        onlyAdmin
+        returns (bool ok)
+    {
+        require(isAdmin[admin] == false);
+        isAdmin[admin] = true;
+
+        LogAddAdmin(msg.sender, admin);
+        return true;
     }
 
-    modifier onlyOwner {
-        require(msg.sender == owner);
+
+    modifier onlyAdmin {
+        require(isAdmin[msg.sender]);
         _;
     }
 }
