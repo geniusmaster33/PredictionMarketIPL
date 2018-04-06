@@ -69,7 +69,7 @@ contract Ipl is MultiOwnable, Haltable
         
         
         IPLMatch match1 = new IPLMatch(_id, address(register), dailyBonus, threshold, address(token));
-        match1.setMultiplier([uint256(2),uint256(3),uint256(4),uint256(5),uint256(6),uint256(7)]);
+        match1.setMultiplier([uint256(2),uint256(10),uint256(10),uint256(10),uint256(90),uint256(10)]);
         token.addAdminX(address(match1));
         matches.add(address(match1));
         
