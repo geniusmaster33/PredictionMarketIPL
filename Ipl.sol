@@ -26,10 +26,12 @@ contract Ipl is MultiOwnable, Haltable
     event LogDailyBonusChange(uint256 oldBonus, uint256 newBonus);
     event LogThresholdChange(uint256 oldThreshold,uint256 newThreshold);
 
-    function Ipl(address _register) {
+    function Ipl(address _register, address _tokenAddress) {
         isAdmin[msg.sender] = true;
         register = RegistrationInterface(_register);
-        token =  EIP20Interface (address(register.tokenAddress));
+        token =  EIP20Interface (_tokenAddress);
+        dailyBonus = 100;
+        threshold = 60;
     }
 
     //
@@ -65,7 +67,8 @@ contract Ipl is MultiOwnable, Haltable
     {
         require(matches.size()+1 == _id);
         
-        IPLMatch match1 = new IPLMatch(_id, address(register), dailyBonus, threshold);
+        
+        IPLMatch match1 = new IPLMatch(_id, address(register), dailyBonus, threshold, address(token));
         match1.setMultiplier([uint256(2),uint256(3),uint256(4),uint256(5),uint256(6),uint256(7)]);
         token.addAdminX(address(match1));
         matches.add(address(match1));
