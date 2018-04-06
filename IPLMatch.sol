@@ -181,9 +181,9 @@ contract IPLMatch is Haltable, Ownable
             }
             if(results[playerAddress].wonLost[4] == 2){
                     uint amt1;
-                    uint bet1 = myBet.weight[i];
+                    uint bet1 = myBet.weight[4];
                     amt1 = 0;
-                    amt1 = (bet1 * multiplier[5] / 10) + bet1 + ((bet1 / matchResult.amtQuestionWinBet[i]) * qPot[i]);
+                    amt1 = (bet1 * multiplier[5] / 10) + bet1 + ((bet1 / matchResult.amtQuestionWinBet[4]) * qPot[4]);
                     profitTokens+=amt1;
                 }
             token.addTokens(playerAddress,profitTokens);

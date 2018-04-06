@@ -1,4 +1,4 @@
-\/*
+/*
 Implements EIP20 token standard: https://github.com/ethereum/EIPs/blob/master/EIPS/eip-20.md
 .*/
 
