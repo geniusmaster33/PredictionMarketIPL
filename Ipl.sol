@@ -69,7 +69,7 @@ contract Ipl is MultiOwnable, Haltable
         
         
         IPLMatch match1 = new IPLMatch(_id, address(register), dailyBonus, threshold, address(token));
-        match1.setMultiplier([uint256(2),uint256(10),uint256(10),uint256(10),uint256(90),uint256(10)]);
+        match1.setMultiplier([uint256(10),uint256(40),uint256(40),uint256(60),uint256(90),uint256(40)]);
         token.addAdminX(address(match1));
         matches.add(address(match1));
         
@@ -93,7 +93,26 @@ contract Ipl is MultiOwnable, Haltable
     
     }
 
-    
+    function resetPlayerBalance() onlyAdmin public returns(bool ok){
+        uint i;
+        address[] memory myPlayerList = register.getPlayerList();
+        for(i=0;i<register.getNumberPlayers();i++){
+            uint balance;
+            balance = token.balanceOf(myPlayerList[i]);
+            if (balance > 100)
+            {
+                token.minusTokens(myPlayerList[i],balance-100);
+            }
+            else if (balance < 100)
+            {
+                token.addTokens(myPlayerList[i],100-balance);
+            }
+            
+        }
+        
+        return (true);
+        
+    }
     
    function setTregisterAddress(address _registerAddress) onlyAdmin returns(bool ok){
         register = RegistrationInterface(_registerAddress);

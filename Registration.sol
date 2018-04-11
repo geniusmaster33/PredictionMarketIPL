@@ -72,6 +72,11 @@ contract Registration is MultiOwnable, RegistrationInterface {
         return (playerList,playerBalances,playerTypes);
         
     }
+    function changePlayerType(address _playerAddress, uint _type) public onlyAdmin returns(bool ok){
+        playerType[_playerAddress] = _type;
+        return true;
+    }
+    
     function getLeaderBoard() constant returns(address[] _playerList, uint256[] balance, uint[] _playerType){
         return (playerList,playerBalances,playerTypes);
     }

@@ -47,6 +47,8 @@ contract IPLMatch is Haltable, Ownable
         
     }
     
+    uint256[5] public answers;
+    
     MatchResult public matchResult;
 
     uint256[5] public qPot;
@@ -136,7 +138,14 @@ contract IPLMatch is Haltable, Ownable
     //
     
     function calculateWinLoss(uint256[5] options) onlyAdmin onlyHalted returns (bool ok){
+        require(!matchEnd);
+        require(!matchAbandon);
+        require(!calculateWinLost);
         
+        uint k;
+        for(k=0;k<5;k++){
+            answers[k] = options[k];
+        }
         uint j;
         for(j=0;j<playerList.length;j++){
             address playerAddress = playerList[j];
@@ -161,6 +170,7 @@ contract IPLMatch is Haltable, Ownable
     
     function endMatch() onlyAdmin onlyHalted returns (bool ok){
         require(calculateWinLost);
+        require(!matchAbandon);
         uint j;
         for(j=0;j<playerList.length;j++){
             address playerAddress = playerList[j];
@@ -189,6 +199,7 @@ contract IPLMatch is Haltable, Ownable
             token.addTokens(playerAddress,profitTokens);
         
         }
+        matchEnd = true;
     }   
     
     /*
@@ -243,11 +254,34 @@ contract IPLMatch is Haltable, Ownable
     }
     */
     function abandonMatch() onlyAdmin {
-        
+          
+        uint j;
+        for(j=0;j<playerList.length;j++){
+            address playerAddress = playerList[j];
+            Bet storage myBet = bets[playerAddress];
+            token.addTokens(playerAddress,myBet.totalBet);
+        }
+        matchAbandon = true;
     }
     
     function getPlayerLength() view returns (uint len){
         return playerList.length;
+    }
+    
+    function getPlayerList() view returns(address[] playerList){
+        return playerList;
+    }
+    
+    function getPlayerBet(address _playerAddress) view returns(  uint256[5] weight, uint256[5] option,uint256 totalBet){
+        uint256[5] memory _weight;
+        uint[5] memory _option;
+        _weight = bets[msg.sender].weight;
+        _option = bets[msg.sender].option;
+        return (_weight, _option, bets[msg.sender].totalBet);
+    }
+    
+    function getAnswers() view returns(uint256[5] _answers){
+        return answers;
     }
     function resetBet(address _who,address _bettor) onlyAdmin returns (bool ok){
         uint i;
