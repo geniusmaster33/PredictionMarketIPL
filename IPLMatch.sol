@@ -275,9 +275,9 @@ contract IPLMatch is Haltable, Ownable
     function getPlayerBet(address _playerAddress) view returns(  uint256[5] weight, uint256[5] option,uint256 totalBet){
         uint256[5] memory _weight;
         uint[5] memory _option;
-        _weight = bets[msg.sender].weight;
-        _option = bets[msg.sender].option;
-        return (_weight, _option, bets[msg.sender].totalBet);
+        _weight = bets[_playerAddress].weight;
+        _option = bets[_playerAddress].option;
+        return (_weight, _option, bets[_playerAddress].totalBet);
     }
     
     function getAnswers() view returns(uint256[5] _answers){
